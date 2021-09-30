@@ -1,1 +1,1 @@
-# Sequence_Recommend_at_TMall
+# Sequence Recommendation with TMall Dataset
