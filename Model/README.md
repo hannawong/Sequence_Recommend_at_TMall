@@ -20,10 +20,10 @@ Then execute the following command in directory /Model/preprocess:
 sh prepare_tmall.sh
 ```
  This would give you `taobao_feature.pkl`,`taobao_test.txt` and `taobao_train.txt`. 
-It might take 20 minutes to preprocess full dataset. However, you can use `UserBehavior_sample.csv` instead, it has fewer samples and can be process in seconds. 
+It might take 20 minutes to preprocess full dataset. However, you can use `UserBehavior_sample.csv` instead, it has fewer samples and can be processed in seconds. 
 
 ## Run base model
-In directory src, run the following command:
+In directory /src, run the following command:
 ```
 python train_tmall.py --model_type DNN
 ```
