@@ -1,10 +1,7 @@
 #coding:utf-8
-import tensorflow as tf
-from utils import *
-from tensorflow.python.ops.rnn_cell import GRUCell
-import mimn as mimn
-import rum as rum
-from rnn import dynamic_rnn 
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+
 # import mann_simple_cell as mann_cell
 class Model(object):
     def __init__(self, n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, BATCH_SIZE, SEQ_LEN, use_negsample=False, Flag="DNN"):
@@ -49,17 +46,8 @@ class Model(object):
 
     def build_fcn_net(self, inp, use_dice = False):
         bn1 = tf.layers.batch_normalization(inputs=inp, name='bn1')
-        dnn1 = tf.layers.dense(bn1, 200, activation=None, name='f1')
-        if use_dice:
-            dnn1 = dice(dnn1, name='dice_1')
-        else:
-            dnn1 = prelu(dnn1, scope='prelu_1')
-
-        dnn2 = tf.layers.dense(dnn1, 80, activation=None, name='f2')
-        if use_dice:
-            dnn2 = dice(dnn2, name='dice_2')
-        else:
-            dnn2 = prelu(dnn2, scope='prelu_2')
+        dnn1 = tf.layers.dense(bn1, 200, activation="relu", name='f1')
+        dnn2 = tf.layers.dense(dnn1, 80, activation="relu", name='f2')
 
         dnn3 = tf.layers.dense(dnn2, 2, activation=None, name='f3')
         self.y_hat = tf.nn.softmax(dnn3) + 0.00000001

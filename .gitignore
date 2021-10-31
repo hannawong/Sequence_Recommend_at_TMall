@@ -1,0 +1,7 @@
+__pycache__/
+dnn_best_model/
+dnn_save_path/
+taobao_test.txt
+taobao_train.txt
+UserBehavior.csv
+script/

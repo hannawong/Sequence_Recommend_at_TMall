@@ -1,15 +1,17 @@
 #coding:utf-8
 import numpy
 from data_iterator import DataIterator
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 from model import *
 import time
 import random
 import sys
-from utils import *
 import multiprocessing
 import argparse
 import pickle as pkl
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-p', type=str, default='train', help='train | test')
@@ -106,9 +108,9 @@ def eval(sess, test_data, model, model_path, batch_size):
     return test_auc, loss_sum, accuracy_sum, aux_loss_sum
 
 def train(
-        train_file = "./data/taobao_data/taobao_train.txt",
-        test_file = "./data/taobao_data/taobao_test.txt",
-        feature_file = "./data/taobao_data/taobao_feature.pkl",
+        train_file = "../data/taobao_train.txt",
+        test_file = "../data/taobao_test.txt",
+        feature_file = "../data/taobao_feature.pkl",
         batch_size = 128,
         maxlen = 20,
         test_iter = 1000,
@@ -214,8 +216,8 @@ def train(
                 #    model.save(sess, model_path+"--"+str(iter))
 
 def test(
-        test_file = "./data/taobao_data/taobao_test.txt",
-        feature_file = "./data/taobao_data/taobao_feature.pkl",
+        test_file = "../data/taobao_data/taobao_test.txt",
+        feature_file = "../data/taobao_data/taobao_feature.pkl",
         batch_size = 256,
         maxlen = 200,
         test_iter = 100,
