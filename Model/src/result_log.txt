@@ -1,0 +1,21 @@
+DNN (baseline, maxlen = 20, 3 layers, relu):
+iter: 2000 ----> train_loss: 0.2501 ---- train_accuracy: 0.7439
+test_auc: 0.8995 ----test_loss: 0.2006 ---- test_accuracy: 0.8225 
+iter: 4000 ----> train_loss: 0.1946 ---- train_accuracy: 0.8268
+test_auc: 0.9143 ----test_loss: 0.1856 ---- test_accuracy: 0.8367 
+iter: 6000 ----> train_loss: 0.0171 ---- train_accuracy: 0.2867
+test_auc: 0.8229 ----test_loss: 0.4580 ---- test_accuracy: 0.7126 
+iter: 8000 ----> train_loss: 0.0462 ---- train_accuracy: 0.9666
+test_auc: 0.8853 ----test_loss: 0.3266 ---- test_accuracy: 0.8085 
+
+=====================================================================================
+
+Vanilla_RNN(maxlen = 20, hiddensize = 32, 3 layers, relu):
+iter: 2000 ----> train_loss: 0.2296 ---- train_accuracy: 0.7737
+test_auc: 0.9090 ----test_loss: 0.1915 ---- test_accuracy: 0.8321 
+iter: 4000 ----> train_loss: 0.1893 ---- train_accuracy: 0.8320
+test_auc: 0.9209 ----test_loss: 0.1790 ---- test_accuracy: 0.8445 
+iter: 6000 ----> train_loss: 0.0234 ---- train_accuracy: 0.2805
+test_auc: 0.8606 ----test_loss: 0.3806 ---- test_accuracy: 0.7692 
+iter: 8000 ----> train_loss: 0.0432 ---- train_accuracy: 0.9682
+test_auc: 0.8896 ----test_loss: 0.3355 ---- test_accuracy: 0.8102 

@@ -9,7 +9,7 @@ import os
 
 from data_iterator import DataIterator, generator_queue
 from utils import calc_auc, prepare_data
-from model import Model_DNN
+from model import Model_DNN, Model_Vanilla_RNN
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
@@ -84,6 +84,8 @@ def train(
 
         if model_type == 'DNN': 
             model = Model_DNN(n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, BATCH_SIZE, SEQ_LEN)
+        elif model_type == "Vanilla_RNN":
+            model = Model_Vanilla_RNN(n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, BATCH_SIZE, SEQ_LEN)
         else:
             print ("Invalid model_type : %s", model_type)
             return
