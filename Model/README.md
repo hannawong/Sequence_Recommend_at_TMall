@@ -36,10 +36,10 @@ python train_tmall.py --model_type DNN
 - LSTM. (Already integrated into Keras Library) Easy
 - GRU4Rec. (Already integrated into Keras Library.[paper: ICLR 2016](https://arxiv.org/pdf/1511.06939.pdf)) Easy
 - Transformer4Rec. (Use code from [Huggingface project](https://github.com/huggingface/transformers). [paper: Google, NIPS 2017](https://arxiv.org/pdf/1706.03762.pdf)) Medium 
-- Caser. (code available in [github](https://github.com/graytowne/caser)). [paper: WSDM 2018](https://arxiv.org/pdf/1809.07426.pdf) Medium
+- Caser. (code available in [github](https://github.com/graytowne/caser). [paper: WSDM 2018](https://arxiv.org/pdf/1809.07426.pdf)) Medium
 - DIN. (code available in [github](https://github.com/zhougr1993/DeepInterestNetwork). [paper:Taobao, KDD 2018](https://arxiv.org/pdf/1706.06978.pdf)) Medium
-- DIEN. (code available in [github](https://github.com/mouna99/dien) [paper: Taobao, AAAI 2019])(https://arxiv.org/pdf/1809.03672.pdf) Hard
-- BERT4Rec. (code available in [github](https://github.com/FeiSun/BERT4Rec)) [paper: Alibaba, CIKM 2019](https://arxiv.org/abs/1904.06690)
+- DIEN. (code available in [github](https://github.com/mouna99/dien). [paper: Taobao, AAAI 2019](https://arxiv.org/pdf/1809.03672.pdf)) Hard
+- BERT4Rec. (code available in [github](https://github.com/FeiSun/BERT4Rec). [paper: Alibaba, CIKM 2019](https://arxiv.org/abs/1904.06690))
 Very Hard
 
 
