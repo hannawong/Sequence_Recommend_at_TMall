@@ -10,12 +10,20 @@ test_auc: 0.8853 ----test_loss: 0.3266 ---- test_accuracy: 0.8085
 
 =====================================================================================
 
-Vanilla_RNN(maxlen = 20, hiddensize = 32, 3 layers, relu):
+Vanilla_RNN(maxlen = 20, hiddensize = 32,  relu):
 iter: 2000 ----> train_loss: 0.2296 ---- train_accuracy: 0.7737
 test_auc: 0.9090 ----test_loss: 0.1915 ---- test_accuracy: 0.8321 
 iter: 4000 ----> train_loss: 0.1893 ---- train_accuracy: 0.8320
-test_auc: 0.9209 ----test_loss: 0.1790 ---- test_accuracy: 0.8445 
+test_auc: 0.9209 ----test_loss: 0.1790 ---- test_accuracy: 0.8418
 iter: 6000 ----> train_loss: 0.0234 ---- train_accuracy: 0.2805
 test_auc: 0.8606 ----test_loss: 0.3806 ---- test_accuracy: 0.7692 
 iter: 8000 ----> train_loss: 0.0432 ---- train_accuracy: 0.9682
 test_auc: 0.8896 ----test_loss: 0.3355 ---- test_accuracy: 0.8102 
+
+=========================================================
+
+DIN(maxlen = 20,hiddensize = 32, relu)
+iter: 2000 ----> train_loss: 0.2343 ---- train_accuracy: 0.7720
+test_auc: 0.9080 ----test_loss: 0.1924 ---- test_accuracy: 0.8307 
+iter: 4000 ----> train_loss: 0.1825 ---- train_accuracy: 0.8409
+test_auc: 0.9293 ----test_loss: 0.1692 ---- test_accuracy: 0.8552 

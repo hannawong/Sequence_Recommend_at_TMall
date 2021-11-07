@@ -1,5 +1,6 @@
 #coding:utf-8
 import numpy as np
+from tensorflow.python.keras.layers.recurrent import GRU
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
 import random
@@ -9,17 +10,19 @@ import os
 
 from data_iterator import DataIterator, generator_queue
 from utils import calc_auc, prepare_data
-from model import Model_DNN, Model_Vanilla_RNN
+from model import Model_DNN, Model_Vanilla_RNN, Model_GRU4Rec, MODEL_DIN
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--random_seed', type=int, default=19)
-parser.add_argument('--model_type', type=str, default='none', help='DNN | DIEN | MIMN | ..')
+parser.add_argument('--model_type', type=str, default='none', help='DNN | DIN | ..')
 
 
 EMBEDDING_DIM = 16
-HIDDEN_SIZE = 16 * 2 
+HIDDEN_SIZE = 16 * 2
+MAX_LEN = 20
+TEST_ITER = 2000
 best_auc = 0.0
 
     
@@ -60,12 +63,12 @@ def eval(sess, test_data, model, model_path, batch_size):
     return test_auc, loss_sum, accuracy_sum
 
 def train(
-        train_file = "../data/taobao_train.txt",
-        test_file = "../data/taobao_test.txt",
+        train_file = "../data/taobao_train_200.txt",
+        test_file = "../data/taobao_test_200.txt",
         feature_file = "../data/taobao_feature.pkl",
         batch_size = 128,
-        maxlen = 20,
-        test_iter = 2000,
+        maxlen = MAX_LEN,
+        test_iter = TEST_ITER,
         model_type = 'DNN',
 ):
 
@@ -84,8 +87,12 @@ def train(
 
         if model_type == 'DNN': 
             model = Model_DNN(n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, BATCH_SIZE, SEQ_LEN)
-        elif model_type == "Vanilla_RNN":
+        elif model_type == "RNN":
             model = Model_Vanilla_RNN(n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, BATCH_SIZE, SEQ_LEN)
+        elif model_type == "GRU":
+            model = Model_GRU4Rec(n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, BATCH_SIZE, SEQ_LEN)
+        elif model_type == "DIN":
+            model = MODEL_DIN(n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, BATCH_SIZE, SEQ_LEN)
         else:
             print ("Invalid model_type : %s", model_type)
             return
@@ -134,6 +141,6 @@ if __name__ == '__main__':
     tf.set_random_seed(SEED)
     np.random.seed(SEED)
     random.seed(SEED)
-
+    print("ddd")
     train(model_type=Model_Type)
    
