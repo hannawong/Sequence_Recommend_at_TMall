@@ -4,7 +4,9 @@ import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
 import tensorflow.keras.backend as K
 from tensorflow.python.ops.rnn_cell import GRUCell
-from tensorflow.keras.layers import (Dense,BatchNormalization,SimpleRNN,GRU)
+from utils import VecAttGRUCell
+from rnn import dynamic_rnn
+from tensorflow.keras.layers import (Dense,BatchNormalization,SimpleRNN,RNN)
 
 class Model(object):
     def __init__(self, n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, BATCH_SIZE, SEQ_LEN, Flag="DNN"):
@@ -55,7 +57,7 @@ class Model(object):
             self.optimizer = tf.train.AdamOptimizer(learning_rate=self.lr).minimize(self.loss)
             self.accuracy = tf.reduce_mean(tf.cast(tf.equal(tf.round(self.y_hat), self.target_ph), tf.float32))
     
-    def din_attention(self, query, facts, mask):
+    def din_attention(self, query, facts, mask, sum = True):
 
         queries = tf.tile(query, [1, tf.shape(facts)[1]]) ##(?,640)
         queries = tf.reshape(queries, tf.shape(facts)) ##(128,20,32)
@@ -74,9 +76,16 @@ class Model(object):
             scores = tf.where(key_masks, scores, paddings)  # if key_masks then scores else paddings
 
         scores = tf.nn.softmax(scores)  # [B, 1, T]
-        output = tf.matmul(scores, facts)  # [B, 1, H]
-        output = tf.squeeze(output)
-        return output
+        if sum:
+            output = tf.matmul(scores, facts)  # [B, 1, H]
+            output = tf.squeeze(output)
+        else:
+            scores = tf.reshape(scores, [-1, tf.shape(facts)[1]])
+            output = facts * tf.expand_dims(scores, -1)
+            output = tf.reshape(output, tf.shape(facts))
+            scores = tf.expand_dims(scores,-1)
+        return output, scores
+
 
     def train(self, sess, inps):
 
@@ -157,10 +166,24 @@ class MODEL_DIN(Model):
         super(MODEL_DIN, self).__init__(n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, 
                                            BATCH_SIZE, SEQ_LEN, Flag="DIN")
         print(self.item_eb,self.item_his_eb,self.mask)
-        attention_output = self.din_attention(self.item_eb, self.item_his_eb, self.mask)
+        attention_output,_ = self.din_attention(self.item_eb, self.item_his_eb, self.mask)
         inp = tf.concat([self.item_eb, attention_output], 1)
         self.build_fcn_net(inp)
-        
+
+class MODEL_DIEN(Model):
+    def __init__(self,n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, BATCH_SIZE, SEQ_LEN=256):
+        super(MODEL_DIEN, self).__init__(n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, 
+                                           BATCH_SIZE, SEQ_LEN, Flag="DIEN")
+        print(self.item_eb,self.item_his_eb,self.mask)
+        rnn_outputs, _ = dynamic_rnn(GRUCell(HIDDEN_SIZE), inputs=self.item_his_eb,
+                                         dtype=tf.float32,scope="gru1")
+        attention_outputs, alphas = self.din_attention(self.item_eb, rnn_outputs, mask=self.mask, sum = False) #alpha: (128, 20)
+        rnn_outputs2, final_state2 = dynamic_rnn(VecAttGRUCell(HIDDEN_SIZE),inputs = rnn_outputs, att_scores = alphas,
+                                            dtype = tf.float32)
+        mean_pooling = K.sum(rnn_outputs2,axis = 1) / K.expand_dims(K.sum(self.mask, axis = 1))
+        self.item_his_eb_sum = tf.reduce_sum(self.item_his_eb,axis = 1)
+        inp = tf.concat([self.item_eb, final_state2],axis = 1)#, self.item_his_eb_sum, self.item_eb*self.item_his_eb_sum], 1)
+        self.build_fcn_net(inp)
         
 
 

@@ -21,9 +21,21 @@ iter: 8000 ----> train_loss: 0.0432 ---- train_accuracy: 0.9682
 test_auc: 0.8896 ----test_loss: 0.3355 ---- test_accuracy: 0.8102 
 
 =========================================================
+GRU: overcomes the vanishing gradients problem of RNN and is faster than LSTM(Hochreiter and Schmidhuber, 1997)
+
+
+=========================================================
 
 DIN(maxlen = 20,hiddensize = 32, relu)
-iter: 2000 ----> train_loss: 0.2343 ---- train_accuracy: 0.7720
-test_auc: 0.9080 ----test_loss: 0.1924 ---- test_accuracy: 0.8307 
-iter: 4000 ----> train_loss: 0.1825 ---- train_accuracy: 0.8409
-test_auc: 0.9293 ----test_loss: 0.1692 ---- test_accuracy: 0.8552 
+iter: 2000 ----> train_loss: 0.2340 ---- train_accuracy: 0.7724
+test_auc: 0.9063 ----test_loss: 0.1944 ---- test_accuracy: 0.8285 
+iter: 4000 ----> train_loss: 0.1831 ---- train_accuracy: 0.8393
+test_auc: 0.9287 ----test_loss: 0.1697 ---- test_accuracy: 0.8543 
+
+=========================================================
+
+DIEN without auxillary loss(maxlen = 20, hiddensize=32,relu)
+iter: 2000 ----> train_loss: 0.2378 ---- train_accuracy: 0.7590
+test_auc: 0.9138 ----test_loss: 0.1868 ---- test_accuracy: 0.8355 
+iter: 4000 ----> train_loss: 0.1804 ---- train_accuracy: 0.8426
+test_auc: 0.9279 ----test_loss: 0.1710 ---- test_accuracy: 0.8526 

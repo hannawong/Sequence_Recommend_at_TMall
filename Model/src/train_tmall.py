@@ -10,7 +10,7 @@ import os
 
 from data_iterator import DataIterator, generator_queue
 from utils import calc_auc, prepare_data
-from model import Model_DNN, Model_Vanilla_RNN, Model_GRU4Rec, MODEL_DIN
+from model import Model_DNN, Model_Vanilla_RNN, Model_GRU4Rec, MODEL_DIN, MODEL_DIEN
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
@@ -93,6 +93,8 @@ def train(
             model = Model_GRU4Rec(n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, BATCH_SIZE, SEQ_LEN)
         elif model_type == "DIN":
             model = MODEL_DIN(n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, BATCH_SIZE, SEQ_LEN)
+        elif model_type == "DIEN":
+            model = MODEL_DIEN(n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, BATCH_SIZE, SEQ_LEN)
         else:
             print ("Invalid model_type : %s", model_type)
             return
@@ -141,6 +143,5 @@ if __name__ == '__main__':
     tf.set_random_seed(SEED)
     np.random.seed(SEED)
     random.seed(SEED)
-    print("ddd")
     train(model_type=Model_Type)
    
