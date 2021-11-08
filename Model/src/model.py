@@ -4,9 +4,11 @@ import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
 import tensorflow.keras.backend as K
 from tensorflow.python.ops.rnn_cell import GRUCell
+from tensorflow.keras.layers import (Dense,BatchNormalization,SimpleRNN)
+
 from utils import VecAttGRUCell
 from rnn import dynamic_rnn
-from tensorflow.keras.layers import (Dense,BatchNormalization,SimpleRNN,RNN)
+from Transformer import transformer_model
 
 class Model(object):
     def __init__(self, n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, BATCH_SIZE, SEQ_LEN, Flag="DNN", aux = False):
@@ -247,6 +249,17 @@ class MODEL_DIEN(Model):
         mean_pooling = K.sum(rnn_outputs2,axis = 1) / K.expand_dims(K.sum(self.mask, axis = 1))
         self.item_his_eb_sum = tf.reduce_sum(self.item_his_eb,axis = 1)
         inp = tf.concat([self.item_eb, final_state2, self.item_his_eb_sum, self.item_eb*self.item_his_eb_sum], 1)
+        self.build_fcn_net(inp)
+
+
+class MODEL_BERT(Model):
+    def __init__(self,n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, BATCH_SIZE, SEQ_LEN=256):
+        super(MODEL_BERT, self).__init__(n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, 
+                                           BATCH_SIZE, SEQ_LEN, Flag="BERT")
+        
+        Trm_outputs = transformer_model(self.item_his_eb,hidden_size=HIDDEN_SIZE,num_attention_heads=1,num_hidden_layers=4,intermediate_size=4*HIDDEN_SIZE)
+        Bert_mean_pooling = K.sum(Trm_outputs,axis = 1) / K.expand_dims(K.sum(self.mask, axis = 1))
+        inp = tf.concat([self.item_eb,Bert_mean_pooling], 1)
         self.build_fcn_net(inp)
         
 
