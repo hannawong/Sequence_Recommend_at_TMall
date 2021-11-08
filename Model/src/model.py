@@ -9,9 +9,10 @@ from rnn import dynamic_rnn
 from tensorflow.keras.layers import (Dense,BatchNormalization,SimpleRNN,RNN)
 
 class Model(object):
-    def __init__(self, n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, BATCH_SIZE, SEQ_LEN, Flag="DNN"):
+    def __init__(self, n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, BATCH_SIZE, SEQ_LEN, Flag="DNN", aux = False):
         
         self.model_flag = Flag
+        self.aux = aux
 
         with tf.name_scope('Inputs'):
 
@@ -41,6 +42,13 @@ class Model(object):
         self.item_eb = tf.concat([self.mid_batch_embedded, self.cate_batch_embedded], axis=1) ## concat target item_id and cate: (bs,32)
         self.item_his_eb = tf.concat([self.mid_his_batch_embedded,self.cate_his_batch_embedded], axis=2) * tf.reshape(self.mask,(BATCH_SIZE, SEQ_LEN, 1)) ##(128,20,32), a sequence
 
+        if self.aux:
+            self.neg_iid_his_batch_ph = tf.placeholder(tf.int32, [None, None], name='mid_his_batch_ph') ##item_history
+            self.neg_cate_his_batch_ph = tf.placeholder(tf.int32, [None, None], name='cate_his_batch_ph') # cate_history
+            self.neg_item_his_eb = tf.nn.embedding_lookup(self.mid_embeddings_var, self.neg_iid_his_batch_ph)
+            self.neg_cate_his_eb = tf.nn.embedding_lookup(self.mid_embeddings_var, self.neg_cate_his_batch_ph)
+            self.neg_his_eb = tf.concat([self.neg_item_his_eb,self.neg_cate_his_eb], axis=2) * tf.reshape(self.mask,(BATCH_SIZE, SEQ_LEN, 1))   
+    
     def build_fcn_net(self, inp):
         ## TODO: activation function Prelu/Dice
         bn1 = BatchNormalization()(inp)
@@ -54,9 +62,33 @@ class Model(object):
             ctr_loss = - tf.reduce_mean(tf.log(self.y_hat) * self.target_ph)
             self.reg_loss =  tf.losses.get_regularization_loss()
             self.loss = tf.add(ctr_loss,self.reg_loss)
+            if self.aux:
+                self.loss += self.aux_loss
             self.optimizer = tf.train.AdamOptimizer(learning_rate=self.lr).minimize(self.loss)
             self.accuracy = tf.reduce_mean(tf.cast(tf.equal(tf.round(self.y_hat), self.target_ph), tf.float32))
-    
+    def auxiliary_loss(self, h_states, click_seq, noclick_seq, mask = None, stag = None):
+        #mask = tf.cast(mask, tf.float32)
+        click_input_ = tf.concat([h_states, click_seq], -1)
+        noclick_input_ = tf.concat([h_states, noclick_seq], -1)
+        click_prop_ = self.auxiliary_net(click_input_, stag = stag)[:, :, 0]
+        noclick_prop_ = self.auxiliary_net(noclick_input_, stag = stag)[:, :, 0]
+
+        click_loss_ = - tf.reshape(tf.log(click_prop_), [-1, tf.shape(click_seq)[1]]) * mask
+        noclick_loss_ = - tf.reshape(tf.log(1.0 - noclick_prop_), [-1, tf.shape(noclick_seq)[1]]) * mask
+
+        loss_ = tf.reduce_mean(click_loss_ + noclick_loss_)
+        return loss_
+
+    def auxiliary_net(self, in_, stag='auxiliary_net'):
+        bn1 = tf.layers.batch_normalization(inputs=in_, name='bn1' + stag, reuse=tf.AUTO_REUSE)
+        dnn1 = tf.layers.dense(bn1, 100, activation=None, name='f1' + stag, reuse=tf.AUTO_REUSE)
+        dnn1 = tf.nn.sigmoid(dnn1)
+        dnn2 = tf.layers.dense(dnn1, 50, activation=None, name='f2' + stag, reuse=tf.AUTO_REUSE)
+        dnn2 = tf.nn.sigmoid(dnn2)
+        dnn3 = tf.layers.dense(dnn2, 2, activation=None, name='f3' + stag, reuse=tf.AUTO_REUSE)
+        y_hat = tf.nn.softmax(dnn3) + 0.000001
+        return y_hat
+
     def din_attention(self, query, facts, mask, sum = True):
 
         queries = tf.tile(query, [1, tf.shape(facts)[1]]) ##(?,640)
@@ -90,8 +122,8 @@ class Model(object):
     def train(self, sess, inps):
 
         # feed_dict: user_id, item_id, cate_id, hist_item, hist_cate, hist_mask, label, lr
-
-        loss, accuracy, _ ,y_hat= sess.run([self.loss, self.accuracy, self.optimizer,self.y_hat], feed_dict={
+        if self.aux:
+            loss, aux_loss, accuracy, _ = sess.run([self.loss, self.aux_loss, self.accuracy, self.optimizer], feed_dict={
                 self.uid_batch_ph: inps[0],
                 self.mid_batch_ph: inps[1],
                 self.cate_batch_ph: inps[2],
@@ -99,22 +131,48 @@ class Model(object):
                 self.cate_his_batch_ph: inps[4],
                 self.mask: inps[5],
                 self.target_ph: inps[6],
-                self.lr: inps[7]
+                self.lr: inps[7],
+                self.neg_iid_his_batch_ph : inps[8],
+                self.neg_cate_his_batch_ph: inps[9]
             })
-        aux_loss = 0
+        else:
+            loss, accuracy, _ ,y_hat= sess.run([self.loss, self.accuracy, self.optimizer,self.y_hat], feed_dict={
+                    self.uid_batch_ph: inps[0],
+                    self.mid_batch_ph: inps[1],
+                    self.cate_batch_ph: inps[2],
+                    self.mid_his_batch_ph: inps[3],
+                    self.cate_his_batch_ph: inps[4],
+                    self.mask: inps[5],
+                    self.target_ph: inps[6],
+                    self.lr: inps[7]
+                })
+            aux_loss = 0
         return loss, accuracy, aux_loss            
 
     def calculate(self, sess, inps):
-        probs, loss, accuracy = sess.run([self.y_hat, self.loss, self.accuracy], feed_dict={
+        if self.aux:
+            probs, loss, accuracy, aux_loss = sess.run([self.y_hat, self.loss, self.accuracy, self.aux_loss], feed_dict={
                 self.uid_batch_ph: inps[0],
                 self.mid_batch_ph: inps[1],
                 self.cate_batch_ph: inps[2],
                 self.mid_his_batch_ph: inps[3],
                 self.cate_his_batch_ph: inps[4],
                 self.mask: inps[5],
-                self.target_ph: inps[6]
-        })
-        aux_loss = 0
+                self.target_ph: inps[6],
+                self.neg_iid_his_batch_ph: inps[7],
+                self.neg_cate_his_batch_ph: inps[8]
+            })
+        else:
+            probs, loss, accuracy = sess.run([self.y_hat, self.loss, self.accuracy], feed_dict={
+                    self.uid_batch_ph: inps[0],
+                    self.mid_batch_ph: inps[1],
+                    self.cate_batch_ph: inps[2],
+                    self.mid_his_batch_ph: inps[3],
+                    self.cate_his_batch_ph: inps[4],
+                    self.mask: inps[5],
+                    self.target_ph: inps[6]
+            })
+            aux_loss = 0
         return probs, loss, accuracy, aux_loss
 
     def save(self, sess, path):
@@ -171,18 +229,24 @@ class MODEL_DIN(Model):
         self.build_fcn_net(inp)
 
 class MODEL_DIEN(Model):
-    def __init__(self,n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, BATCH_SIZE, SEQ_LEN=256):
+    def __init__(self,n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, BATCH_SIZE, SEQ_LEN=256,aux = False):
         super(MODEL_DIEN, self).__init__(n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, 
-                                           BATCH_SIZE, SEQ_LEN, Flag="DIEN")
-        print(self.item_eb,self.item_his_eb,self.mask)
+                                           BATCH_SIZE, SEQ_LEN, Flag="DIEN",aux = aux)
+        self.aux = aux
         rnn_outputs, _ = dynamic_rnn(GRUCell(HIDDEN_SIZE), inputs=self.item_his_eb,
                                          dtype=tf.float32,scope="gru1")
+
+        if self.aux:
+            aux_loss_1 = self.auxiliary_loss(rnn_outputs[:, :-1, :], self.item_his_eb[:, 1:, :],
+                                             self.neg_his_eb[:, 1:, :], self.mask[:, 1:], stag = "bigru_0")
+            self.aux_loss = aux_loss_1
+
         attention_outputs, alphas = self.din_attention(self.item_eb, rnn_outputs, mask=self.mask, sum = False) #alpha: (128, 20)
         rnn_outputs2, final_state2 = dynamic_rnn(VecAttGRUCell(HIDDEN_SIZE),inputs = rnn_outputs, att_scores = alphas,
                                             dtype = tf.float32)
         mean_pooling = K.sum(rnn_outputs2,axis = 1) / K.expand_dims(K.sum(self.mask, axis = 1))
         self.item_his_eb_sum = tf.reduce_sum(self.item_his_eb,axis = 1)
-        inp = tf.concat([self.item_eb, final_state2],axis = 1)#, self.item_his_eb_sum, self.item_eb*self.item_his_eb_sum], 1)
+        inp = tf.concat([self.item_eb, final_state2, self.item_his_eb_sum, self.item_eb*self.item_his_eb_sum], 1)
         self.build_fcn_net(inp)
         
 

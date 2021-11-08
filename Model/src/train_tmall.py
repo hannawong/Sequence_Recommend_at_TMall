@@ -9,7 +9,7 @@ import pickle as pkl
 import os
 
 from data_iterator import DataIterator, generator_queue
-from utils import calc_auc, prepare_data
+from utils import calc_auc, gen_random, prepare_data
 from model import Model_DNN, Model_Vanilla_RNN, Model_GRU4Rec, MODEL_DIN, MODEL_DIEN
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -23,6 +23,7 @@ EMBEDDING_DIM = 16
 HIDDEN_SIZE = 16 * 2
 MAX_LEN = 20
 TEST_ITER = 2000
+BATCH_SIZE = 128
 best_auc = 0.0
 
     
@@ -44,7 +45,12 @@ def eval(sess, test_data, model, model_path, batch_size):
             continue
         nums += 1
         target = label
-        prob, loss, acc, aux_loss = model.calculate(sess, [user_id, item_id, cate_id, hist_item, hist_cate,hist_mask, label])
+
+        rand_ids = list(gen_random(BATCH_SIZE))
+        neg_hist_cate = hist_cate[rand_ids]
+        neg_hist_item = hist_item[rand_ids]
+
+        prob, loss, acc, aux_loss = model.calculate(sess, [user_id, item_id, cate_id, hist_item, hist_cate,hist_mask, label,neg_hist_item,neg_hist_cate])
         loss_sum += loss
         accuracy_sum += acc
         prob_1 = prob[:, 0].tolist()
@@ -94,7 +100,7 @@ def train(
         elif model_type == "DIN":
             model = MODEL_DIN(n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, BATCH_SIZE, SEQ_LEN)
         elif model_type == "DIEN":
-            model = MODEL_DIEN(n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, BATCH_SIZE, SEQ_LEN)
+            model = MODEL_DIEN(n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, BATCH_SIZE, SEQ_LEN, aux = True)
         else:
             print ("Invalid model_type : %s", model_type)
             return
@@ -121,7 +127,11 @@ def train(
 
                 user_id, item_id, cate_id, label, hist_item, hist_cate, hist_mask = prepare_data(src, tgt)
                 #print(user_id.shape,item_id.shape,cate_id.shape,label.shape,hist_item.shape,hist_cate.shape,hist_mask.shape)
-                loss, acc, aux_loss = model.train(sess, [user_id, item_id, cate_id, hist_item, hist_cate, hist_mask, label, lr])
+                rand_ids = list(gen_random(BATCH_SIZE))
+                neg_hist_cate = hist_cate[rand_ids]
+                neg_hist_item = hist_item[rand_ids]
+                
+                loss, acc, aux_loss = model.train(sess, [user_id, item_id, cate_id, hist_item, hist_cate, hist_mask, label, lr,neg_hist_item,neg_hist_cate])
                 loss_sum += loss
                 accuracy_sum += acc
                 iter += 1

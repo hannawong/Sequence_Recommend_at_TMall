@@ -1,4 +1,16 @@
 
+import numpy as np
+def gen_random(batchsize):
+    index = np.random.choice(batchsize,batchsize)
+    for i in range(len(index)):
+        if i == index[i]:
+            while True:
+                rand = np.random.choice(batchsize,1)[0]
+                if rand != i:
+                    index[i] = rand
+                    break
+
+    return index
 
 def calc_auc(raw_arr):
     """Summary
