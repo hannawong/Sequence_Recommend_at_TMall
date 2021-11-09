@@ -8,7 +8,7 @@ import pickle as pkl
 import os
 
 from data_iterator import DataIterator, generator_queue
-from utils import calc_auc, gen_random, prepare_data
+from utils import calc_auc, gen_position_id, gen_random, prepare_data
 from model import Model_DNN, Model_Vanilla_RNN, Model_GRU4Rec, MODEL_DIN, MODEL_DIEN,MODEL_BERT
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -48,8 +48,10 @@ def eval(sess, test_data, model, model_path, batch_size):
         rand_ids = list(gen_random(BATCH_SIZE))
         neg_hist_cate = hist_cate[rand_ids]
         neg_hist_item = hist_item[rand_ids]
+        
+        position_ids = gen_position_id(BATCH_SIZE, MAX_LEN)
 
-        prob, loss, acc, aux_loss = model.calculate(sess, [user_id, item_id, cate_id, hist_item, hist_cate,hist_mask, label,neg_hist_item,neg_hist_cate])
+        prob, loss, acc, aux_loss = model.calculate(sess, [user_id, item_id, cate_id, hist_item, hist_cate,hist_mask, label,neg_hist_item, neg_hist_cate,position_ids])
         loss_sum += loss
         accuracy_sum += acc
         prob_1 = prob[:, 0].tolist()
@@ -133,7 +135,9 @@ def train(
                 neg_hist_cate = hist_cate[rand_ids]
                 neg_hist_item = hist_item[rand_ids]
                 
-                loss, acc, aux_loss = model.train(sess, [user_id, item_id, cate_id, hist_item, hist_cate, hist_mask, label, lr,neg_hist_item,neg_hist_cate])
+                position_ids = gen_position_id(BATCH_SIZE, MAX_LEN)
+
+                loss, acc, aux_loss = model.train(sess, [user_id, item_id, cate_id, hist_item, hist_cate, hist_mask, label, lr,neg_hist_item,neg_hist_cate,position_ids])
                 loss_sum += loss
                 accuracy_sum += acc
                 iter += 1

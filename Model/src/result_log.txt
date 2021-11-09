@@ -47,7 +47,7 @@ iter: 4000 ----> train_loss: 1.1201 ---- train_accuracy: 0.8430
 test_auc: 0.9298 ----test_loss: 1.1114 ---- test_accuracy: 0.8549
 =======
 DIEN with auxillary loss(maxlen = 20, hiddensize = 32, relu, concat self.item_his_eb_sum, self.item_eb*self.item_his_eb_sum)
-iter: 2000 ----> train_loss: 1.4566 ---- train_accuracy: 0.7541
-test_auc: 0.9127 ----test_loss: 1.2094 ---- test_accuracy: 0.8337 
-iter: 4000 ----> train_loss: 1.1271 ---- train_accuracy: 0.8449
-test_auc: 0.9325 ----test_loss: 1.1142 ---- test_accuracy: 0.8584 
+iter: 2000 ----> train_loss: 1.4870 ---- train_accuracy: 0.7558
+test_auc: 0.9124 ----test_loss: 1.2277 ---- test_accuracy: 0.8339 
+iter: 4000 ----> train_loss: 1.1319 ---- train_accuracy: 0.8461
+test_auc: 0.9343 ----test_loss: 1.1149 ---- test_accuracy: 0.8615 

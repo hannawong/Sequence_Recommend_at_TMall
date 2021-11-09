@@ -6,7 +6,7 @@ import tensorflow.keras.backend as K
 from tensorflow.python.ops.rnn_cell import GRUCell
 from tensorflow.keras.layers import (Dense,BatchNormalization,SimpleRNN)
 
-from utils import VecAttGRUCell
+from utils import VecAttGRUCell, feedforward, multihead_attention
 from rnn import dynamic_rnn
 from Transformer import transformer_model
 
@@ -15,6 +15,7 @@ class Model(object):
         
         self.model_flag = Flag
         self.aux = aux
+        self.position_embedding_var = None
 
         with tf.name_scope('Inputs'):
 
@@ -26,9 +27,13 @@ class Model(object):
             self.mask = tf.placeholder(tf.float32, [None, None], name='mask_batch_ph') #history_mask
             self.target_ph = tf.placeholder(tf.float32, [None, 2], name='target_ph') #label:[0,1]/[1,0]
             self.lr = tf.placeholder(tf.float64, [])
+            self.position_id = tf.placeholder(tf.int32,[None,None],name = "position_id") ## only useful in BERT and transformer
 
         # Embedding layer
         with tf.name_scope('Embedding_layer'):
+
+            if self.model_flag == "BERT":
+                self.position_embedding_var = tf.get_variable("position_embedding_var",[SEQ_LEN, HIDDEN_SIZE],trainable=True)
 
             self.mid_embeddings_var = tf.get_variable("mid_embedding_var", [n_mid, EMBEDDING_DIM], trainable=True)  # Embedding table
             self.mid_batch_embedded = tf.nn.embedding_lookup(self.mid_embeddings_var, self.mid_batch_ph) # embedding for target item id: (bs, 16)
@@ -37,10 +42,16 @@ class Model(object):
             self.cate_batch_embedded = tf.nn.embedding_lookup(self.mid_embeddings_var, self.cate_batch_ph)# embedding for target cate id: (bs, 16)
             self.cate_his_batch_embedded = tf.nn.embedding_lookup(self.mid_embeddings_var, self.cate_his_batch_ph)# embedding for history cate_id:(bs, maxlen, 16)          
             
-        with tf.name_scope('init_operation'):    
+        with tf.name_scope('init_operation'): 
+
+            if self.model_flag == "BERT":
+                self.position_embedding_placeholder = tf.placeholder(tf.float32,[SEQ_LEN, HIDDEN_SIZE], name="position_emb_ph")
+                self.position_embedding_init = self.position_embedding_var.assign(self.position_embedding_placeholder)
+            
             self.mid_embedding_placeholder = tf.placeholder(tf.float32,[n_mid, EMBEDDING_DIM], name="mid_emb_ph")
             self.mid_embedding_init = self.mid_embeddings_var.assign(self.mid_embedding_placeholder)
         
+
         self.item_eb = tf.concat([self.mid_batch_embedded, self.cate_batch_embedded], axis=1) ## concat target item_id and cate: (bs,32)
         self.item_his_eb = tf.concat([self.mid_his_batch_embedded,self.cate_his_batch_embedded], axis=2) * tf.reshape(self.mask,(BATCH_SIZE, SEQ_LEN, 1)) ##(128,20,32), a sequence
 
@@ -50,6 +61,11 @@ class Model(object):
             self.neg_item_his_eb = tf.nn.embedding_lookup(self.mid_embeddings_var, self.neg_iid_his_batch_ph)
             self.neg_cate_his_eb = tf.nn.embedding_lookup(self.mid_embeddings_var, self.neg_cate_his_batch_ph)
             self.neg_his_eb = tf.concat([self.neg_item_his_eb,self.neg_cate_his_eb], axis=2) * tf.reshape(self.mask,(BATCH_SIZE, SEQ_LEN, 1))   
+        
+        if self.model_flag == "BERT":
+            self.position_id_embedding = tf.nn.embedding_lookup(self.position_embedding_var,self.position_id)
+            self.item_his_eb = tf.add(self.item_his_eb,self.position_id_embedding)
+
     
     def build_fcn_net(self, inp):
         ## TODO: activation function Prelu/Dice
@@ -68,6 +84,8 @@ class Model(object):
                 self.loss += self.aux_loss
             self.optimizer = tf.train.AdamOptimizer(learning_rate=self.lr).minimize(self.loss)
             self.accuracy = tf.reduce_mean(tf.cast(tf.equal(tf.round(self.y_hat), self.target_ph), tf.float32))
+    
+    
     def auxiliary_loss(self, h_states, click_seq, noclick_seq, mask = None, stag = None):
         #mask = tf.cast(mask, tf.float32)
         click_input_ = tf.concat([h_states, click_seq], -1)
@@ -135,7 +153,8 @@ class Model(object):
                 self.target_ph: inps[6],
                 self.lr: inps[7],
                 self.neg_iid_his_batch_ph : inps[8],
-                self.neg_cate_his_batch_ph: inps[9]
+                self.neg_cate_his_batch_ph: inps[9],
+                self.position_id: inps[10],
             })
         else:
             loss, accuracy, _ ,y_hat= sess.run([self.loss, self.accuracy, self.optimizer,self.y_hat], feed_dict={
@@ -146,7 +165,8 @@ class Model(object):
                     self.cate_his_batch_ph: inps[4],
                     self.mask: inps[5],
                     self.target_ph: inps[6],
-                    self.lr: inps[7]
+                    self.lr: inps[7],
+                    self.position_id: inps[10],
                 })
             aux_loss = 0
         return loss, accuracy, aux_loss            
@@ -162,7 +182,8 @@ class Model(object):
                 self.mask: inps[5],
                 self.target_ph: inps[6],
                 self.neg_iid_his_batch_ph: inps[7],
-                self.neg_cate_his_batch_ph: inps[8]
+                self.neg_cate_his_batch_ph: inps[8],
+                self.position_id: inps[9],
             })
         else:
             probs, loss, accuracy = sess.run([self.y_hat, self.loss, self.accuracy], feed_dict={
@@ -172,7 +193,8 @@ class Model(object):
                     self.mid_his_batch_ph: inps[3],
                     self.cate_his_batch_ph: inps[4],
                     self.mask: inps[5],
-                    self.target_ph: inps[6]
+                    self.target_ph: inps[6],
+                    self.position_id: inps[9],
             })
             aux_loss = 0
         return probs, loss, accuracy, aux_loss
@@ -257,7 +279,15 @@ class MODEL_BERT(Model):
         super(MODEL_BERT, self).__init__(n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, 
                                            BATCH_SIZE, SEQ_LEN, Flag="BERT")
         
-        Trm_outputs = transformer_model(self.item_his_eb,hidden_size=HIDDEN_SIZE,num_attention_heads=1,num_hidden_layers=4,intermediate_size=4*HIDDEN_SIZE)
+        Trm_outputs = transformer_model(self.item_his_eb,\
+                                        hidden_size=HIDDEN_SIZE,\
+                                        num_attention_heads=1,\
+                                        num_hidden_layers=1,\
+                                        intermediate_size=4*HIDDEN_SIZE,\
+                                        hidden_dropout_prob=0.0,\
+                                        attention_probs_dropout_prob=0.0
+                                        )
+
         Bert_mean_pooling = K.sum(Trm_outputs,axis = 1) / K.expand_dims(K.sum(self.mask, axis = 1))
         inp = tf.concat([self.item_eb,Bert_mean_pooling], 1)
         self.build_fcn_net(inp)
