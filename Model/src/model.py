@@ -32,7 +32,7 @@ class Model(object):
         # Embedding layer
         with tf.name_scope('Embedding_layer'):
 
-            if self.model_flag == "BERT":
+            if self.model_flag in ["Trm",'BERT']:
                 self.position_embedding_var = tf.get_variable("position_embedding_var",[SEQ_LEN, HIDDEN_SIZE],trainable=True)
 
             self.mid_embeddings_var = tf.get_variable("mid_embedding_var", [n_mid, EMBEDDING_DIM], trainable=True)  # Embedding table
@@ -44,7 +44,7 @@ class Model(object):
             
         with tf.name_scope('init_operation'): 
 
-            if self.model_flag == "BERT":
+            if self.model_flag in ["Trm","BERT"]:
                 self.position_embedding_placeholder = tf.placeholder(tf.float32,[SEQ_LEN, HIDDEN_SIZE], name="position_emb_ph")
                 self.position_embedding_init = self.position_embedding_var.assign(self.position_embedding_placeholder)
             
@@ -62,7 +62,7 @@ class Model(object):
             self.neg_cate_his_eb = tf.nn.embedding_lookup(self.mid_embeddings_var, self.neg_cate_his_batch_ph)
             self.neg_his_eb = tf.concat([self.neg_item_his_eb,self.neg_cate_his_eb], axis=2) * tf.reshape(self.mask,(BATCH_SIZE, SEQ_LEN, 1))   
         
-        if self.model_flag == "BERT":
+        if self.model_flag in ["Trm",'BERT']:
             self.position_id_embedding = tf.nn.embedding_lookup(self.position_embedding_var,self.position_id)
             self.item_his_eb = tf.add(self.item_his_eb,self.position_id_embedding)
 
@@ -274,6 +274,26 @@ class MODEL_DIEN(Model):
         self.build_fcn_net(inp)
 
 
+class MODEL_Transformer(Model):
+    def __init__(self,n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, BATCH_SIZE, SEQ_LEN=256):
+        super(MODEL_Transformer, self).__init__(n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, 
+                                           BATCH_SIZE, SEQ_LEN, Flag="Trm")
+        
+        Trm_outputs = transformer_model(self.item_his_eb,\
+                                        hidden_size=HIDDEN_SIZE,\
+                                        num_attention_heads=1,\
+                                        num_hidden_layers=4,\
+                                        intermediate_size=4*HIDDEN_SIZE,\
+                                        hidden_dropout_prob=0.0,\
+                                        attention_probs_dropout_prob=0.0
+                                        )
+        print(Trm_outputs[-1])
+        exit()
+        Trm_mean_pooling = K.sum(Trm_outputs,axis = 1) / K.expand_dims(K.sum(self.mask, axis = 1))
+        inp = tf.concat([self.item_eb,Trm_mean_pooling], 1)
+        self.build_fcn_net(inp)
+        
+
 class MODEL_BERT(Model):
     def __init__(self,n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, BATCH_SIZE, SEQ_LEN=256):
         super(MODEL_BERT, self).__init__(n_uid, n_mid, EMBEDDING_DIM, HIDDEN_SIZE, 
@@ -282,16 +302,14 @@ class MODEL_BERT(Model):
         Trm_outputs = transformer_model(self.item_his_eb,\
                                         hidden_size=HIDDEN_SIZE,\
                                         num_attention_heads=1,\
-                                        num_hidden_layers=1,\
+                                        num_hidden_layers=4,\
                                         intermediate_size=4*HIDDEN_SIZE,\
                                         hidden_dropout_prob=0.0,\
                                         attention_probs_dropout_prob=0.0
                                         )
-
-        Bert_mean_pooling = K.sum(Trm_outputs,axis = 1) / K.expand_dims(K.sum(self.mask, axis = 1))
-        inp = tf.concat([self.item_eb,Bert_mean_pooling], 1)
-        self.build_fcn_net(inp)
         
-
+        Trm_mean_pooling = K.sum(Trm_outputs,axis = 1) / K.expand_dims(K.sum(self.mask, axis = 1))
+        inp = tf.concat([self.item_eb,Trm_mean_pooling], 1)
+        self.build_fcn_net(inp)
 
         
